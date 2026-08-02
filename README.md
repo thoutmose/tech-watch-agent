@@ -1,5 +1,10 @@
 # tech-watch-agent
 
+[![Repo: public](https://img.shields.io/badge/repo-public-2ea44f?style=flat-square)](https://github.com/thoutmose/tech-watch-agent)
+[![Delivers to Discord](https://img.shields.io/badge/delivers%20to-Discord-5865F2?style=flat-square&logo=discord&logoColor=white)](https://discord.com)
+[![Claude Code skill](https://img.shields.io/badge/claude%20code-skill-D97757?style=flat-square)](https://code.claude.com/docs/en/skills)
+[![Built by Claude](https://img.shields.io/badge/built%20by-Claude-D97757?style=flat-square)](https://claude.com/claude-code)
+
 *[Français](README.fr.md)*
 
 An automated + on-demand tech watch: a daily cloud routine and an interactive Claude Code skill research a configurable list of topics, write structured reports, and deliver them to Discord — with a Discord-native command line for managing the whole thing.
@@ -42,44 +47,75 @@ There are three moving pieces, in three repos, plus one Claude Code cloud routin
 
 ```mermaid
 flowchart LR
-    subgraph Config["tech-watch-config (private repo)"]
-        SRC["sources.md"]
-        THR["discord-threads.json"]
+    classDef user fill:#e8f8f0,stroke:#2ea44f,stroke-width:1.5px,color:#1a1a1a
+    classDef external fill:#eef6ff,stroke:#4a90d9,stroke-width:1.5px,color:#1a1a1a
+    classDef config fill:#fff3cd,stroke:#d9a441,stroke-width:1.5px,color:#1a1a1a
+    classDef agent fill:#f3e8ff,stroke:#9b59b6,stroke-width:1.5px,color:#1a1a1a
+    classDef routine fill:#e8ecff,stroke:#5b6bd9,stroke-width:1.5px,color:#1a1a1a
+    classDef discord fill:#eef0ff,stroke:#5865F2,stroke-width:1.5px,color:#1a1a1a
+    classDef bot fill:#fdece8,stroke:#e0654a,stroke-width:1.5px,color:#1a1a1a
+
+    User1(("🧑‍💻 You\nClaude Code session")):::user
+    User2(("🙋 You\nDiscord")):::user
+
+    subgraph External["🌐 External sources"]
+        EXT["Blogs · Subreddits\nGitHub Releases · Newsletters"]
     end
 
-    subgraph Agent["tech-watch-agent (this repo)"]
-        SKILL["/tech-watch skill"]
-        SUB["tech-watch-researcher\nsub-agent (parallel, per topic)"]
-        REP["reports/&lt;topic&gt;/&lt;date&gt;.md"]
+    subgraph Config["⚙️ tech-watch-config (private repo)"]
+        SRC["📄 sources.md"]
+        THR["📄 discord-threads.json"]
     end
 
-    subgraph Routine["weekly-tech-watch (Claude Code cloud routine)"]
-        PROMPT["Stored prompt\n(embeds a snapshot of\nsources.md + discord-threads.json)"]
+    subgraph Agent["🧠 tech-watch-agent (this repo)"]
+        SKILL["🎯 /tech-watch skill"]
+        SUB["🤖 tech-watch-researcher\nsub-agents, parallel per topic"]
+        REP["📝 reports/&lt;topic&gt;/&lt;date&gt;.md"]
     end
 
-    subgraph Bot["tech-watch-cli-bot"]
-        CLI["#cli Discord commands"]
+    subgraph Routine["☁️ weekly-tech-watch (cloud routine)"]
+        CRON["⏰ Daily cron\n05:00 UTC"]
+        PROMPT["📋 Stored prompt\nstatic snapshot of Config"]
+        RESEARCH["🔎 Research + write report"]
     end
 
-    subgraph Discord["Discord"]
-        FORUM["Forum channel\none persistent thread per topic"]
+    subgraph Bot["🤖 tech-watch-cli-bot"]
+        CLI["⌨️ command handler"]
     end
 
-    User1(("You, in a\nClaude Code session")) -->|"/tech-watch [topic] [period]"| SKILL
-    SKILL --> SUB --> REP
+    subgraph Discord["💬 Discord"]
+        CLICHAN["#cli text channel"]
+        FORUM["🗂️ Forum\none thread per topic"]
+    end
+
+    class EXT external
+    class SRC,THR config
+    class SKILL,SUB,REP agent
+    class CRON,PROMPT,RESEARCH routine
+    class CLI bot
+    class CLICHAN,FORUM discord
+
+    User1 -->|"/tech-watch [topic] [period]"| SKILL
     SKILL <-.synced before each run.-> Config
+    SKILL --> SUB
+    SUB -->|"WebSearch / WebFetch"| EXT
+    SUB --> REP
 
-    User2(("You, in Discord")) -->|"topic/source commands"| CLI
+    CRON --> PROMPT
+    PROMPT -.->|"static snapshot, refreshed manually"| Config
+    PROMPT --> RESEARCH
+    RESEARCH -->|"WebSearch / WebFetch"| EXT
+    RESEARCH -->|"webhook POST"| FORUM
+
+    User2 -->|"topic / source commands"| CLICHAN
+    User2 -->|"run 'Topic' [--notify]"| CLICHAN
+    CLICHAN --> CLI
     CLI <-->|"git read/write"| Config
-    User2 -->|"run \"Topic\" [--notify]"| CLI
-    CLI -->|"routine-fire API\n(optional Topic: hint)"| PROMPT
-
-    Cron(("Daily cron\n05:00 UTC")) --> PROMPT
-    PROMPT -->|"webhook POST"| FORUM
+    CLI -->|"routine-fire API (optional Topic hint)"| PROMPT
     CLI -.completion ping.-> User2
 ```
 
-The important asymmetry in this diagram: the on-demand skill and the bot both talk to `tech-watch-config` **live**, but the cloud routine does not — see [Configuration & data flow](#configuration--data-flow).
+Both paths do the same research work against the same external sources (blogs, subreddits, GitHub release feeds, newsletters) — the diagram's key asymmetry is in configuration, not research: the on-demand skill and the bot both talk to `tech-watch-config` **live**, but the cloud routine's stored prompt only holds a **static snapshot** of it — see [Configuration & data flow](#configuration--data-flow).
 
 ## How a run works
 
