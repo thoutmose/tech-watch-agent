@@ -74,4 +74,6 @@ In your reply to the user, for each topic show the abstract, the findings (title
 
 ## Notes for the future
 
-Discord delivery (a channel per topic, plus triggering new runs from Discord) is planned but not implemented — no Discord MCP connector is connected yet. When that's set up, step 7's output should also be posted to the matching topic channel.
+Discord delivery for the **automated weekly cloud routine** is implemented via a webhook (not an MCP connector, not this skill): one Forum channel, one persistent thread per topic. The topic->thread-ID mapping, the webhook URL, and the source list are all embedded directly in the routine's own prompt (not committed to this repo — `sources.md`, `reports/`, and `discord-threads.json` are all gitignored on purpose) — see the `weekly-tech-watch` routine at https://claude.ai/code/routines. Because none of that persists via git, newly discovered sources and newly created thread IDs need periodic manual re-sync into the routine's prompt. This on-demand skill path does not post to Discord; it only presents results in chat, per step 7.
+
+Triggering new runs from Discord is still not implemented.

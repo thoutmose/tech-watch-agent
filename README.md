@@ -11,12 +11,16 @@ Data store and reports for automated tech watch runs.
 ## Running a tech watch
 
 - **On demand**: in a Claude Code session, run `/tech-watch [topic] [period]`, e.g. `/tech-watch "LLM agents" this year`. Omit the topic to run all topics in `sources.md`. Default period is "this week".
-- **Automatically**: a weekly cloud routine runs every Monday at 08:00 UTC across all topics in `sources.md`, covering the prior week, and commits/pushes the new reports here.
+- **Automatically**: a weekly cloud routine runs every Monday at 08:00 UTC across all topics in `sources.md`, covering the prior week, and posts each topic's report to its Discord thread (see below). Note: `reports/`, `sources.md`, and `discord-threads.json` are all `.gitignore`d, so the routine's `git add -A` step does not persist any of them to this repo — Discord is the only durable record of report content, and both the source list and the topic->thread-ID mapping live embedded in the `weekly-tech-watch` routine's own config instead, manually re-synced there when they change.
 
 ## Quality bar
 
 Reports favor items that are well-cited/discussed, from credible primary sources, and clearly dated within the requested period. Low-signal reposts, unverifiable paywalled teasers, and duplicates of already-covered items are skipped. Each topic report is capped to keep signal high rather than listing everything found.
 
+## Discord delivery
+
+The weekly automated run posts to a Discord Forum channel: one thread per topic, created on first post and reused every week after via a topic->thread-ID mapping. The webhook URL and that mapping both live only in the `weekly-tech-watch` cloud routine's config (https://claude.ai/code/routines), not in this repo — `discord-threads.json` locally is a gitignored scratch copy, not the source of truth. On-demand `/tech-watch` runs still just present results in chat.
+
 ## Roadmap
 
-- Discord delivery (one channel per topic, plus on-demand triggering from Discord) is planned but not yet wired up. Until then, results are delivered directly in chat for on-demand runs, and via commits to this repo for the weekly automated run.
+- Triggering new on-demand runs from Discord is not yet wired up.
