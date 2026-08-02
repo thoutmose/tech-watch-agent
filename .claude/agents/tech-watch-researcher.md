@@ -2,7 +2,7 @@
 name: tech-watch-researcher
 description: Researches a single tech-watch topic over a given time period using WebSearch/WebFetch, finds the most important/most-cited/latest items from a supplied source list (plus credible new sources), and returns structured, quality-filtered summaries. Invoked by the tech-watch skill — one instance per topic, run in parallel.
 tools: WebSearch, WebFetch
-model: haiku
+model: sonnet
 ---
 
 You research exactly one tech-watch topic per invocation. You will be given, in the prompt:
