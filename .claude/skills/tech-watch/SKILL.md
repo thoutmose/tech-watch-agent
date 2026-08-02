@@ -25,9 +25,20 @@ Args may include a **topic** and/or a **period**. Examples: `/tech-watch`, `/tec
   ```
   Always pass the resolved concrete range (e.g. "2026-07-26 to 2026-08-02") to sub-agents, never a relative phrase.
 
-## 2. Read sources.md
+## 2. Sync and read sources.md
 
-Read `~/Developer/tech-watch-agent/sources.md`. Parse `##` headers as topic names, and the `-` list beneath each (until the next `##`) as that topic's sources.
+`sources.md` and `discord-threads.json` are gitignored in this repo — the actual source of truth is the private `thoutmose/tech-watch-config` repo, shared with the weekly cloud routine and the `tech-watch-cli-bot` Discord bot. Before reading, sync it:
+
+```bash
+if [ -d ~/Developer/tech-watch-config/.git ]; then
+  git -C ~/Developer/tech-watch-config pull --ff-only
+else
+  git clone https://github.com/thoutmose/tech-watch-config ~/Developer/tech-watch-config
+fi
+cp ~/Developer/tech-watch-config/sources.md ~/Developer/tech-watch-config/discord-threads.json ~/Developer/tech-watch-agent/
+```
+
+Then read `~/Developer/tech-watch-agent/sources.md`. Parse `##` headers as topic names, and the `-` list beneath each (until the next `##`) as that topic's sources.
 
 ## 3. Research each topic in parallel
 
@@ -58,6 +69,13 @@ If a sub-agent found nothing meeting the quality bar, say so in the abstract rat
 
 For every "New sources discovered" entry a sub-agent returned, append it to the right topic's list in `sources.md` (dedupe against what's already there — case-insensitive, match on URL or name). Don't touch topics that weren't part of this run.
 
+If anything changed, propagate it back to the shared config repo so the weekly routine and the Discord bot see it too:
+
+```bash
+cp ~/Developer/tech-watch-agent/sources.md ~/Developer/tech-watch-config/
+cd ~/Developer/tech-watch-config && git add sources.md && git commit -m "On-demand tech watch: new sources — <date>" && git push
+```
+
 ## 6. Commit and push
 
 ```bash
@@ -74,6 +92,8 @@ In your reply to the user, for each topic show the abstract, the findings (title
 
 ## Notes for the future
 
-Discord delivery for the **automated weekly cloud routine** is implemented via a webhook (not an MCP connector, not this skill): one Forum channel, one persistent thread per topic. The topic->thread-ID mapping, the webhook URL, and the source list are all embedded directly in the routine's own prompt (not committed to this repo — `sources.md`, `reports/`, and `discord-threads.json` are all gitignored on purpose) — see the `weekly-tech-watch` routine at https://claude.ai/code/routines. Because none of that persists via git, newly discovered sources and newly created thread IDs need periodic manual re-sync into the routine's prompt. This on-demand skill path does not post to Discord; it only presents results in chat, per step 7.
+Discord delivery for the **automated weekly cloud routine** is implemented via a webhook (not an MCP connector, not this skill): one Forum channel, one persistent thread per topic. The topic->thread-ID mapping and the source list live in the private `thoutmose/tech-watch-config` repo (see step 2 above), which the routine clones at the start of every run and writes back to directly — see the `weekly-tech-watch` routine at https://claude.ai/code/routines. This on-demand skill path does not post to Discord; it only presents results in chat, per step 7.
 
-Triggering new runs from Discord is still not implemented.
+Editing topics/sources from Discord (add/remove topic, add/remove source) is handled by the `tech-watch-cli-bot` Discord bot listening on a `#cli` channel — see `~/Developer/tech-watch-cli-bot`. It also reads/writes `tech-watch-config` directly.
+
+Triggering new *research* runs from Discord (as opposed to editing config) is still not implemented.
